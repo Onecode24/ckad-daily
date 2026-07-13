@@ -1,0 +1,335 @@
+<title>CKAD Day 1: Kubernetes Architecture</title>
+<style>
+  :root {
+    --bg: #f4f6f4;
+    --surface: #ffffff;
+    --ink: #16211c;
+    --ink-soft: #4d5c54;
+    --line: #dde3dd;
+    --accent: #2d6a4f;
+    --accent-soft: #e7f0ea;
+    --amber: #a8631f;
+    --amber-soft: #f6ead9;
+    --code-bg: #101913;
+    --code-ink: #d9ead9;
+    --shadow: 0 1px 2px rgba(22,33,28,0.06), 0 8px 24px rgba(22,33,28,0.05);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #121814;
+      --surface: #1a2119;
+      --ink: #e7ece6;
+      --ink-soft: #a9b6a9;
+      --line: #2b352a;
+      --accent: #6fbf94;
+      --accent-soft: #1e2f26;
+      --amber: #e0a555;
+      --amber-soft: #2e2517;
+      --code-bg: #0b100c;
+      --code-ink: #cfe6cf;
+      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px rgba(0,0,0,0.35);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #121814; --surface: #1a2119; --ink: #e7ece6; --ink-soft: #a9b6a9;
+    --line: #2b352a; --accent: #6fbf94; --accent-soft: #1e2f26;
+    --amber: #e0a555; --amber-soft: #2e2517; --code-bg: #0b100c; --code-ink: #cfe6cf;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px rgba(0,0,0,0.35);
+  }
+  :root[data-theme="light"] {
+    --bg: #f4f6f4; --surface: #ffffff; --ink: #16211c; --ink-soft: #4d5c54;
+    --line: #dde3dd; --accent: #2d6a4f; --accent-soft: #e7f0ea;
+    --amber: #a8631f; --amber-soft: #f6ead9; --code-bg: #101913; --code-ink: #d9ead9;
+    --shadow: 0 1px 2px rgba(22,33,28,0.06), 0 8px 24px rgba(22,33,28,0.05);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: Charter, Georgia, "Iowan Old Style", serif;
+    line-height: 1.6;
+    margin: 0;
+    padding: 0 20px 80px;
+  }
+  .page { max-width: 720px; margin: 0 auto; }
+
+  header.masthead {
+    padding: 40px 0 24px;
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 32px;
+  }
+  .eyebrow {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.78rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent);
+    display: inline-block;
+    padding: 3px 9px;
+    background: var(--accent-soft);
+    border-radius: 4px;
+    margin-bottom: 14px;
+  }
+  h1 {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    font-size: 2rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    margin: 0 0 6px;
+    text-wrap: balance;
+  }
+  .subhead {
+    color: var(--ink-soft);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    font-size: 0.98rem;
+    margin: 0;
+  }
+
+  section { margin-bottom: 40px; }
+  h2 {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--ink);
+    margin: 0 0 14px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid var(--line);
+  }
+  h3 {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    font-size: 1.02rem;
+    margin: 20px 0 8px;
+    color: var(--accent);
+  }
+  p { margin: 0 0 14px; max-width: 66ch; }
+  ul, ol { margin: 0 0 14px; padding-left: 1.3em; }
+  li { margin-bottom: 6px; max-width: 62ch; }
+  strong { font-weight: 700; }
+  code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.86em;
+    background: var(--accent-soft);
+    padding: 0.1em 0.35em;
+    border-radius: 3px;
+  }
+  pre {
+    background: var(--code-bg);
+    color: var(--code-ink);
+    padding: 16px 18px;
+    border-radius: 8px;
+    overflow-x: auto;
+    box-shadow: var(--shadow);
+    margin: 0 0 16px;
+  }
+  pre code {
+    background: none;
+    padding: 0;
+    font-size: 0.86rem;
+    line-height: 1.55;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 20px 24px;
+    box-shadow: var(--shadow);
+  }
+  .lab {
+    border-left: 4px solid var(--amber);
+    background: var(--amber-soft);
+    border-radius: 8px;
+    padding: 18px 22px;
+  }
+  .lab p:last-child { margin-bottom: 0; }
+
+  .tier {
+    margin-bottom: 22px;
+  }
+  .tier-label {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.75rem;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 10px;
+    display: block;
+  }
+  .tier ol { margin-bottom: 0; }
+  .tier ol li { margin-bottom: 10px; }
+
+  details {
+    margin-top: 28px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--surface);
+    box-shadow: var(--shadow);
+  }
+  summary {
+    cursor: pointer;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    font-weight: 700;
+    padding: 16px 22px;
+    color: var(--accent);
+    list-style: none;
+  }
+  summary::-webkit-details-marker { display: none; }
+  summary::before {
+    content: "▸ ";
+  }
+  details[open] summary::before { content: "▾ "; }
+  details .answer-body { padding: 0 22px 20px; border-top: 1px solid var(--line); padding-top: 16px; }
+  details .answer-body h4 {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    color: var(--ink-soft);
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin: 18px 0 6px;
+  }
+  details .answer-body h4:first-child { margin-top: 0; }
+
+  footer {
+    margin-top: 48px;
+    padding-top: 20px;
+    border-top: 1px solid var(--line);
+    color: var(--ink-soft);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.78rem;
+    text-align: center;
+  }
+</style>
+
+<div class="page">
+  <header class="masthead">
+    <span class="eyebrow">CKAD Daily &middot; Week 1 &middot; Foundations</span>
+    <h1>Day 1: Kubernetes Architecture &amp; Cluster Components</h1>
+    <p class="subhead">Concept brief &middot; kubectl drills &middot; hands-on lab &middot; 3-tier quiz</p>
+  </header>
+
+  <section>
+    <h2>Concept brief</h2>
+    <p>A Kubernetes cluster has two kinds of machines: <strong>control plane nodes</strong> and <strong>worker nodes</strong>. You don't need to administer the control plane for the CKAD exam (that's CKA territory), but you do need to know what each piece does so you can reason about where things run and why something is broken.</p>
+
+    <h3>Control plane components</h3>
+    <ul>
+      <li><code>kube-apiserver</code> &mdash; the front door. Every <code>kubectl</code> command, every controller, everything talks to the cluster <em>only</em> through the API server. It validates and persists objects to etcd.</li>
+      <li><code>etcd</code> &mdash; the cluster's key-value store. The single source of truth for all cluster state.</li>
+      <li><code>kube-scheduler</code> &mdash; watches for Pods with no node assigned and picks a node based on resource requests, affinity, taints, etc.</li>
+      <li><code>kube-controller-manager</code> &mdash; runs the reconciliation loops (Deployment, ReplicaSet, Node controllers, etc.) that compare desired state to actual state and act to close the gap.</li>
+    </ul>
+
+    <h3>Worker node components</h3>
+    <ul>
+      <li><code>kubelet</code> &mdash; the agent on every node. Receives Pod specs assigned to its node and makes sure those containers are actually running.</li>
+      <li><code>kube-proxy</code> &mdash; maintains network rules on each node so traffic to a Service's ClusterIP reaches the right backend Pods.</li>
+      <li><strong>Container runtime</strong> &mdash; containerd (or another CRI-compliant runtime) that pulls images and runs containers.</li>
+    </ul>
+
+    <p>The core mental model for CKAD: you describe <em>desired state</em> in a manifest (or via <code>kubectl run</code>/<code>create</code>), the API server stores it, and a controller loop continuously drives <em>actual state</em> toward it. This is why <code>kubectl scale</code>, <code>kubectl set image</code>, and editing a Deployment's YAML all work the same way &mdash; they change desired state, and the controllers do the rest.</p>
+  </section>
+
+  <section>
+    <h2>kubectl command drills</h2>
+    <p>Get oriented in a cluster (run these against your local minikube):</p>
+    <pre><code># Cluster &amp; node info
+kubectl cluster-info
+kubectl get nodes -o wide
+kubectl describe node minikube
+
+# Control-plane components as pods (static pods on minikube)
+kubectl get pods -n kube-system
+kubectl get pods -n kube-system -o wide
+
+# Inspect the API server's view of resource types
+kubectl api-resources | head -20
+kubectl api-versions
+
+# Watch reconciliation happen live
+kubectl create deployment demo --image=nginx --dry-run=client -o yaml
+kubectl create deployment demo --image=nginx
+kubectl get events --sort-by=.lastTimestamp | tail -10
+kubectl get pods -w   # Ctrl+C once you see it go Running
+
+# Clean up
+kubectl delete deployment demo</code></pre>
+
+    <p>Context/namespace commands you'll use every day from here on:</p>
+    <pre><code>kubectl config current-context
+kubectl config get-contexts
+kubectl config set-context --current --namespace=default
+kubectl get all -A</code></pre>
+  </section>
+
+  <section>
+    <h2>Hands-on lab <span style="font-weight:400;color:var(--ink-soft);font-size:0.85rem;">&mdash; run on your own local minikube</span></h2>
+    <div class="lab">
+      <p><strong>Task:</strong> start minikube if it isn't running, identify every control-plane pod, and confirm the kubelet + container runtime versions match what the API server reports.</p>
+      <pre><code>minikube start   # if not already running
+kubectl get pods -n kube-system -o custom-columns=NAME:.metadata.name,STATUS:.status.phase
+kubectl version --short
+kubectl get nodes -o jsonpath='{.items[0].status.nodeInfo.kubeletVersion} {.items[0].status.nodeInfo.containerRuntimeVersion}{"\n"}'</code></pre>
+      <p><strong>Verification</strong> (empty output on the first line = every kube-system pod is Running; second line should print two non-empty version strings):</p>
+      <pre><code>kubectl get pods -n kube-system --field-selector=status.phase!=Running
+kubectl get nodes -o jsonpath='{.items[0].status.nodeInfo.kubeletVersion} {.items[0].status.nodeInfo.containerRuntimeVersion}{"\n"}'</code></pre>
+    </div>
+  </section>
+
+  <section>
+    <h2>Quiz</h2>
+
+    <div class="tier">
+      <span class="tier-label">Tier 1 &middot; Recall</span>
+      <div class="card">
+        <ol>
+          <li>Which control plane component is the <em>only</em> one that talks directly to etcd?</li>
+          <li>What is the difference in responsibility between <code>kube-scheduler</code> and <code>kube-controller-manager</code>?</li>
+          <li>Name the two agents that run on every worker node and briefly say what each does.</li>
+        </ol>
+      </div>
+    </div>
+
+    <div class="tier">
+      <span class="tier-label">Tier 2 &middot; Application</span>
+      <div class="card">
+        <ol>
+          <li>Write the exact <code>kubectl</code> command to list every pod in the <code>kube-system</code> namespace with wide output (showing node and IP).</li>
+          <li>Write the exact <code>kubectl</code> command to print only the kubelet version of the first node in the cluster, using <code>jsonpath</code>.</li>
+          <li>Write the exact <code>kubectl</code> command(s) to switch your current context's default namespace to <code>dev</code> without changing the context itself.</li>
+        </ol>
+      </div>
+    </div>
+
+    <div class="tier">
+      <span class="tier-label">Tier 3 &middot; Exam-sim (target: 3 minutes)</span>
+      <div class="card">
+        <ol>
+          <li>A pod is stuck in <code>Pending</code> and <code>kubectl describe pod &lt;name&gt;</code> shows an event <code>0/1 nodes are available: 1 Insufficient cpu</code>. Which control plane component produced that event, and what two things would you check next to unstick it?</li>
+          <li>True or false, and justify in one sentence: if <code>kube-apiserver</code> goes down but <code>kubelet</code> and the container runtime are still running on a node, all Pods already running on that node immediately stop.</li>
+        </ol>
+      </div>
+    </div>
+
+    <details>
+      <summary>Answer key</summary>
+      <div class="answer-body">
+        <h4>Tier 1</h4>
+        <p>1. <code>kube-apiserver</code> &mdash; it is the sole component with direct read/write access to etcd; every other component (including <code>kubectl</code>) goes through it.</p>
+        <p>2. <code>kube-scheduler</code> only decides which node a new, unscheduled Pod should run on. <code>kube-controller-manager</code> runs the ongoing reconciliation loops that keep actual state matching desired state over time.</p>
+        <p>3. <code>kubelet</code> &mdash; receives Pod specs for its node and ensures the described containers are running via the container runtime. <code>kube-proxy</code> &mdash; maintains per-node network rules so traffic to a Service's ClusterIP reaches the correct backend Pod(s).</p>
+
+        <h4>Tier 2</h4>
+        <p>1. <code>kubectl get pods -n kube-system -o wide</code></p>
+        <p>2. <code>kubectl get nodes -o jsonpath='{.items[0].status.nodeInfo.kubeletVersion}'</code></p>
+        <p>3. <code>kubectl config set-context --current --namespace=dev</code></p>
+
+        <h4>Tier 3</h4>
+        <p>1. Produced by <code>kube-scheduler</code> (it emits the <code>FailedScheduling</code> event when no node satisfies the Pod's resource requests). Next checks: <code>kubectl describe nodes</code> (look at Allocatable/Allocated resources for headroom) and <code>kubectl get pod &lt;name&gt; -o yaml</code> (check <code>resources.requests.cpu</code> &mdash; it may simply be asking for more CPU than any node has free).</p>
+        <p>2. <strong>False.</strong> The API server being down does not stop already-running containers &mdash; kubelet and the container runtime keep existing Pods alive independently. What breaks is new scheduling, config updates, and <code>kubectl</code> access, since those all require the API server.</p>
+      </div>
+    </details>
+  </section>
+
+  <footer>CKAD Daily Trainer &middot; Day 1 of 60 &middot; exam target 2026-09-13</footer>
+</div>
