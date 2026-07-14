@@ -1,0 +1,336 @@
+<title>CKAD Day 2: kubectl Basics</title>
+<style>
+  :root {
+    --bg: #f4f6f4;
+    --surface: #ffffff;
+    --ink: #16211c;
+    --ink-soft: #4d5c54;
+    --line: #dde3dd;
+    --accent: #2d6a4f;
+    --accent-soft: #e7f0ea;
+    --amber: #a8631f;
+    --amber-soft: #f6ead9;
+    --code-bg: #101913;
+    --code-ink: #d9ead9;
+    --shadow: 0 1px 2px rgba(22,33,28,0.06), 0 8px 24px rgba(22,33,28,0.05);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #121814;
+      --surface: #1a2119;
+      --ink: #e7ece6;
+      --ink-soft: #a9b6a9;
+      --line: #2b352a;
+      --accent: #6fbf94;
+      --accent-soft: #1e2f26;
+      --amber: #e0a555;
+      --amber-soft: #2e2517;
+      --code-bg: #0b100c;
+      --code-ink: #cfe6cf;
+      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px rgba(0,0,0,0.35);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #121814; --surface: #1a2119; --ink: #e7ece6; --ink-soft: #a9b6a9;
+    --line: #2b352a; --accent: #6fbf94; --accent-soft: #1e2f26;
+    --amber: #e0a555; --amber-soft: #2e2517; --code-bg: #0b100c; --code-ink: #cfe6cf;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px rgba(0,0,0,0.35);
+  }
+  :root[data-theme="light"] {
+    --bg: #f4f6f4; --surface: #ffffff; --ink: #16211c; --ink-soft: #4d5c54;
+    --line: #dde3dd; --accent: #2d6a4f; --accent-soft: #e7f0ea;
+    --amber: #a8631f; --amber-soft: #f6ead9; --code-bg: #101913; --code-ink: #d9ead9;
+    --shadow: 0 1px 2px rgba(22,33,28,0.06), 0 8px 24px rgba(22,33,28,0.05);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: Charter, Georgia, "Iowan Old Style", serif;
+    line-height: 1.6;
+    margin: 0;
+    padding: 0 20px 80px;
+  }
+  .page { max-width: 720px; margin: 0 auto; }
+
+  header.masthead {
+    padding: 40px 0 24px;
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 32px;
+  }
+  .eyebrow {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.78rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent);
+    display: inline-block;
+    padding: 3px 9px;
+    background: var(--accent-soft);
+    border-radius: 4px;
+    margin-bottom: 14px;
+  }
+  h1 {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    font-size: 2rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    margin: 0 0 6px;
+    text-wrap: balance;
+  }
+  .subhead {
+    color: var(--ink-soft);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    font-size: 0.98rem;
+    margin: 0;
+  }
+
+  section { margin-bottom: 40px; }
+  h2 {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--ink);
+    margin: 0 0 14px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid var(--line);
+  }
+  h3 {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    font-size: 1.02rem;
+    margin: 20px 0 8px;
+    color: var(--accent);
+  }
+  p { margin: 0 0 14px; max-width: 66ch; }
+  ul, ol { margin: 0 0 14px; padding-left: 1.3em; }
+  li { margin-bottom: 6px; max-width: 62ch; }
+  strong { font-weight: 700; }
+  code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.86em;
+    background: var(--accent-soft);
+    padding: 0.1em 0.35em;
+    border-radius: 3px;
+  }
+  pre {
+    background: var(--code-bg);
+    color: var(--code-ink);
+    padding: 16px 18px;
+    border-radius: 8px;
+    overflow-x: auto;
+    box-shadow: var(--shadow);
+    margin: 0 0 16px;
+  }
+  pre code {
+    background: none;
+    padding: 0;
+    font-size: 0.86rem;
+    line-height: 1.55;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 20px 24px;
+    box-shadow: var(--shadow);
+  }
+  .lab {
+    border-left: 4px solid var(--amber);
+    background: var(--amber-soft);
+    border-radius: 8px;
+    padding: 18px 22px;
+  }
+  .lab p:last-child { margin-bottom: 0; }
+
+  .tier {
+    margin-bottom: 22px;
+  }
+  .tier-label {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.75rem;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 10px;
+    display: block;
+  }
+  .tier ol { margin-bottom: 0; }
+  .tier ol li { margin-bottom: 10px; }
+
+  details {
+    margin-top: 28px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--surface);
+    box-shadow: var(--shadow);
+  }
+  summary {
+    cursor: pointer;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    font-weight: 700;
+    padding: 16px 22px;
+    color: var(--accent);
+    list-style: none;
+  }
+  summary::-webkit-details-marker { display: none; }
+  summary::before {
+    content: "▸ ";
+  }
+  details[open] summary::before { content: "▾ "; }
+  details .answer-body { padding: 0 22px 20px; border-top: 1px solid var(--line); padding-top: 16px; }
+  details .answer-body h4 {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    color: var(--ink-soft);
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin: 18px 0 6px;
+  }
+  details .answer-body h4:first-child { margin-top: 0; }
+
+  footer {
+    margin-top: 48px;
+    padding-top: 20px;
+    border-top: 1px solid var(--line);
+    color: var(--ink-soft);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.78rem;
+    text-align: center;
+  }
+</style>
+
+<div class="page">
+  <header class="masthead">
+    <span class="eyebrow">CKAD Daily &middot; Week 1 &middot; Foundations</span>
+    <h1>Day 2: kubectl Basics &mdash; Contexts, Namespaces &amp; Output Formats</h1>
+    <p class="subhead">Concept brief &middot; kubectl drills &middot; hands-on lab &middot; 3-tier quiz</p>
+  </header>
+
+  <section>
+    <h2>Concept brief</h2>
+    <p>Day 1 covered <em>what</em> the cluster is made of. Today is about the tool you'll use for every remaining question on the exam: <code>kubectl</code> itself, and the handful of "meta" commands that let you navigate a cluster fast instead of guessing.</p>
+
+    <p>A <strong>context</strong> bundles together a cluster, a user (credentials), and a default namespace into one named entry in your kubeconfig (<code>~/.kube/config</code>). On the real exam you're often handed several clusters and told "solve this question in context X" &mdash; the first thing you do is switch context, otherwise you'll create the right object in the wrong cluster and get zero credit. <code>kubectl config</code> is the command family for reading and switching contexts.</p>
+
+    <p>A <strong>namespace</strong> is a logical partition inside a <em>single</em> cluster &mdash; a way to scope names (<code>kubectl get pod nginx -n dev</code> and <code>-n prod</code> are different pods) and apply RBAC/resource limits per team or environment. Some objects are namespaced (Pods, Deployments, Services, ConfigMaps...), some are cluster-scoped (Nodes, PersistentVolumes, ClusterRoles...) &mdash; <code>kubectl api-resources</code> tells you which is which. A common exam gotcha: forgetting <code>-n &lt;namespace&gt;</code> silently operates on <code>default</code> instead.</p>
+
+    <p><strong>Output formats</strong> (<code>-o wide/yaml/json/jsonpath/custom-columns</code>) matter because CKAD is timed &mdash; you rarely have time to <code>describe</code> and read paragraphs of text. <code>-o yaml</code> shows the full live object, <code>-o wide</code> adds extra columns to <code>get</code> (node, IP), and <code>jsonpath</code>/<code>custom-columns</code> let you extract exactly one field for scripting or verification commands.</p>
+
+    <p><code>kubectl explain</code> is the exam's built-in documentation &mdash; since you get no internet access during the real exam, <code>kubectl explain &lt;resource&gt;.&lt;field&gt;</code> is how you look up exact field names and types instead of guessing at YAML structure from memory.</p>
+  </section>
+
+  <section>
+    <h2>kubectl command drills</h2>
+    <p>Contexts and namespaces:</p>
+    <pre><code># Contexts
+kubectl config get-contexts
+kubectl config current-context
+kubectl config use-context minikube
+kubectl config set-context --current --namespace=dev
+
+# Namespaces
+kubectl create namespace dev
+kubectl get namespaces
+kubectl get ns dev -o yaml
+kubectl config set-context --current --namespace=default   # switch back</code></pre>
+
+    <p>Output formats &mdash; same <code>get</code> call, different lenses:</p>
+    <pre><code>kubectl run web --image=nginx --dry-run=client -o yaml
+kubectl create deployment web --image=nginx
+kubectl get pods -o wide
+kubectl get pod -l app=web -o yaml
+kubectl get pod -l app=web -o json
+kubectl get pods -o jsonpath='{.items[0].metadata.name}{"\n"}'
+kubectl get pods -o custom-columns=NAME:.metadata.name,STATUS:.status.phase,NODE:.spec.nodeName
+kubectl get deploy web -o jsonpath='{.spec.template.spec.containers[0].image}{"\n"}'</code></pre>
+
+    <p><code>kubectl explain</code> &mdash; building YAML from memory-free field lookups:</p>
+    <pre><code>kubectl explain pod
+kubectl explain pod.spec
+kubectl explain pod.spec.containers
+kubectl explain pod.spec.containers.resources
+kubectl explain deployment.spec.strategy --recursive</code></pre>
+
+    <p>Mutating an existing object once you know the field names:</p>
+    <pre><code>kubectl set image deployment/web nginx=nginx:1.25
+kubectl scale deployment/web --replicas=3
+kubectl edit deployment web
+kubectl patch deployment web -p '{"spec":{"replicas":2}}'</code></pre>
+
+    <p>Clean up:</p>
+    <pre><code>kubectl delete deployment web
+kubectl delete namespace dev</code></pre>
+  </section>
+
+  <section>
+    <h2>Hands-on lab <span style="font-weight:400;color:var(--ink-soft);font-size:0.85rem;">&mdash; run on your own local minikube</span></h2>
+    <div class="lab">
+      <p><strong>Task:</strong> create a <code>dev</code> namespace, deploy an nginx Deployment named <code>web</code> into it (3 replicas), then &mdash; without switching your current context's namespace &mdash; retrieve the image of container 0 in <code>web</code> using <code>jsonpath</code>, scoped by <code>-n dev</code>.</p>
+      <pre><code>kubectl create namespace dev
+kubectl create deployment web --image=nginx --replicas=3 -n dev
+kubectl get pods -n dev -o wide</code></pre>
+      <p><strong>Verification</strong> (should print <code>nginx</code>, then a count of <code>3</code>):</p>
+      <pre><code>kubectl get deployment web -n dev -o jsonpath='{.spec.template.spec.containers[0].image}{"\n"}'
+kubectl get pods -n dev -l app=web --field-selector=status.phase=Running -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' | wc -l</code></pre>
+    </div>
+  </section>
+
+  <section>
+    <h2>Quiz</h2>
+
+    <div class="tier">
+      <span class="tier-label">Tier 1 &middot; Recall</span>
+      <div class="card">
+        <ol>
+          <li>What three things does a kubeconfig "context" bundle together?</li>
+          <li>Name two resource types that are cluster-scoped (not namespaced), and one command you'd use to check whether a given resource is namespaced.</li>
+          <li>What problem does <code>kubectl explain</code> solve during the actual (offline) exam?</li>
+        </ol>
+      </div>
+    </div>
+
+    <div class="tier">
+      <span class="tier-label">Tier 2 &middot; Application</span>
+      <div class="card">
+        <ol>
+          <li>Write the exact <code>kubectl</code> command to switch the <em>current context's</em> default namespace to <code>prod</code> (without changing which context is active).</li>
+          <li>Write the exact <code>kubectl</code> command to print just the <code>status.phase</code> of every pod in the <code>dev</code> namespace, one per line, using <code>jsonpath</code>.</li>
+          <li>Write the exact <code>kubectl explain</code> command you'd run to look up the valid fields under a Deployment's <code>spec.strategy</code>, showing all nested fields at once (not one level at a time).</li>
+        </ol>
+      </div>
+    </div>
+
+    <div class="tier">
+      <span class="tier-label">Tier 3 &middot; Exam-sim (target: 3 minutes)</span>
+      <div class="card">
+        <ol>
+          <li>You're told: "In the <code>k8s-prod</code> context, find the container image used by the Deployment named <code>payments</code> in the <code>billing</code> namespace, without changing your current context." Write the single command that does this using <code>--context</code> and <code>-n</code> flags directly (no <code>use-context</code> switch), with <code>-o jsonpath</code> to extract only the image string.</li>
+          <li>You run <code>kubectl get pod mypod</code> and get <code>Error from server (NotFound): pods "mypod" not found</code>, but <code>kubectl get pod mypod -n staging</code> finds it immediately. Explain in one sentence what happened, and name the single command you'd run first to prevent this mistake for the rest of the session.</li>
+        </ol>
+      </div>
+    </div>
+
+    <details>
+      <summary>Answer key</summary>
+      <div class="answer-body">
+        <h4>Tier 1</h4>
+        <p>1. A cluster (API server address/CA), a user (credentials), and a default namespace.</p>
+        <p>2. Cluster-scoped examples: <code>Node</code>, <code>PersistentVolume</code>, <code>ClusterRole</code>, <code>Namespace</code> itself (any two). Check with <code>kubectl api-resources -o wide</code> (see the <code>NAMESPACED</code> column) or <code>kubectl api-resources --namespaced=false</code>.</p>
+        <p>3. There's no internet access during the real exam, so you can't look up docs or Stack Overflow. <code>kubectl explain &lt;resource&gt;.&lt;field&gt;</code> is the only in-cluster reference for exact field names, types, and valid values when writing YAML from memory.</p>
+
+        <h4>Tier 2</h4>
+        <p>1. <code>kubectl config set-context --current --namespace=prod</code></p>
+        <p>2. <code>kubectl get pods -n dev -o jsonpath='{range .items[*]}{.status.phase}{"\n"}{end}'</code></p>
+        <p>3. <code>kubectl explain deployment.spec.strategy --recursive</code></p>
+
+        <h4>Tier 3</h4>
+        <p>1. <code>kubectl get deployment payments -n billing --context=k8s-prod -o jsonpath='{.spec.template.spec.containers[0].image}{"\n"}'</code></p>
+        <p>2. The current context's default namespace was not <code>staging</code> (likely <code>default</code>), so the first <code>get pod</code> looked in the wrong namespace and found nothing &mdash; it wasn't actually missing. Run <code>kubectl config set-context --current --namespace=staging</code> first (or always pass <code>-n &lt;namespace&gt;</code> explicitly) to avoid repeating this.</p>
+      </div>
+    </details>
+  </section>
+
+  <footer>CKAD Daily Trainer &middot; Day 2 of 60 &middot; exam target 2026-09-13</footer>
+</div>
