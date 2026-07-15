@@ -1,0 +1,366 @@
+<title>CKAD Day 3: Pods — Anatomy, Lifecycle & Multi-Container Patterns</title>
+<style>
+  :root {
+    --bg: #f4f6f4;
+    --surface: #ffffff;
+    --ink: #16211c;
+    --ink-soft: #4d5c54;
+    --line: #dde3dd;
+    --accent: #2d6a4f;
+    --accent-soft: #e7f0ea;
+    --amber: #a8631f;
+    --amber-soft: #f6ead9;
+    --code-bg: #101913;
+    --code-ink: #d9ead9;
+    --shadow: 0 1px 2px rgba(22,33,28,0.06), 0 8px 24px rgba(22,33,28,0.05);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #121814;
+      --surface: #1a2119;
+      --ink: #e7ece6;
+      --ink-soft: #a9b6a9;
+      --line: #2b352a;
+      --accent: #6fbf94;
+      --accent-soft: #1e2f26;
+      --amber: #e0a555;
+      --amber-soft: #2e2517;
+      --code-bg: #0b100c;
+      --code-ink: #cfe6cf;
+      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px rgba(0,0,0,0.35);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #121814; --surface: #1a2119; --ink: #e7ece6; --ink-soft: #a9b6a9;
+    --line: #2b352a; --accent: #6fbf94; --accent-soft: #1e2f26;
+    --amber: #e0a555; --amber-soft: #2e2517; --code-bg: #0b100c; --code-ink: #cfe6cf;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px rgba(0,0,0,0.35);
+  }
+  :root[data-theme="light"] {
+    --bg: #f4f6f4; --surface: #ffffff; --ink: #16211c; --ink-soft: #4d5c54;
+    --line: #dde3dd; --accent: #2d6a4f; --accent-soft: #e7f0ea;
+    --amber: #a8631f; --amber-soft: #f6ead9; --code-bg: #101913; --code-ink: #d9ead9;
+    --shadow: 0 1px 2px rgba(22,33,28,0.06), 0 8px 24px rgba(22,33,28,0.05);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: Charter, Georgia, "Iowan Old Style", serif;
+    line-height: 1.6;
+    margin: 0;
+    padding: 0 20px 80px;
+  }
+  .page { max-width: 720px; margin: 0 auto; }
+
+  header.masthead {
+    padding: 40px 0 24px;
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 32px;
+  }
+  .eyebrow {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.78rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent);
+    display: inline-block;
+    padding: 3px 9px;
+    background: var(--accent-soft);
+    border-radius: 4px;
+    margin-bottom: 14px;
+  }
+  h1 {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    font-size: 2rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    margin: 0 0 6px;
+    text-wrap: balance;
+  }
+  .subhead {
+    color: var(--ink-soft);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    font-size: 0.98rem;
+    margin: 0;
+  }
+
+  section { margin-bottom: 40px; }
+  h2 {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--ink);
+    margin: 0 0 14px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid var(--line);
+  }
+  h3 {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    font-size: 1.02rem;
+    margin: 20px 0 8px;
+    color: var(--accent);
+  }
+  p { margin: 0 0 14px; max-width: 66ch; }
+  ul, ol { margin: 0 0 14px; padding-left: 1.3em; }
+  li { margin-bottom: 6px; max-width: 62ch; }
+  strong { font-weight: 700; }
+  code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.86em;
+    background: var(--accent-soft);
+    padding: 0.1em 0.35em;
+    border-radius: 3px;
+  }
+  pre {
+    background: var(--code-bg);
+    color: var(--code-ink);
+    padding: 16px 18px;
+    border-radius: 8px;
+    overflow-x: auto;
+    box-shadow: var(--shadow);
+    margin: 0 0 16px;
+  }
+  pre code {
+    background: none;
+    padding: 0;
+    font-size: 0.86rem;
+    line-height: 1.55;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 20px 24px;
+    box-shadow: var(--shadow);
+  }
+  .lab {
+    border-left: 4px solid var(--amber);
+    background: var(--amber-soft);
+    border-radius: 8px;
+    padding: 18px 22px;
+  }
+  .lab p:last-child { margin-bottom: 0; }
+
+  .tier {
+    margin-bottom: 22px;
+  }
+  .tier-label {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.75rem;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 10px;
+    display: block;
+  }
+  .tier ol { margin-bottom: 0; }
+  .tier ol li { margin-bottom: 10px; }
+
+  details {
+    margin-top: 28px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--surface);
+    box-shadow: var(--shadow);
+  }
+  summary {
+    cursor: pointer;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    font-weight: 700;
+    padding: 16px 22px;
+    color: var(--accent);
+    list-style: none;
+  }
+  summary::-webkit-details-marker { display: none; }
+  summary::before {
+    content: "▸ ";
+  }
+  details[open] summary::before { content: "▾ "; }
+  details .answer-body { padding: 0 22px 20px; border-top: 1px solid var(--line); padding-top: 16px; }
+  details .answer-body h4 {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    color: var(--ink-soft);
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin: 18px 0 6px;
+  }
+  details .answer-body h4:first-child { margin-top: 0; }
+
+  footer {
+    margin-top: 48px;
+    padding-top: 20px;
+    border-top: 1px solid var(--line);
+    color: var(--ink-soft);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.78rem;
+    text-align: center;
+  }
+</style>
+
+<div class="page">
+  <header class="masthead">
+    <span class="eyebrow">CKAD Daily &middot; Week 1 &middot; Foundations</span>
+    <h1>Day 3: Pods &mdash; Anatomy, Lifecycle &amp; Multi-Container Patterns</h1>
+    <p class="subhead">Concept brief &middot; kubectl drills &middot; hands-on lab &middot; 3-tier quiz</p>
+  </header>
+
+  <section>
+    <h2>Concept brief</h2>
+    <p>Days 1-2 covered the cluster and the tool. Today: the <strong>Pod</strong>, the smallest deployable unit in Kubernetes and the object almost every other resource (Deployment, Job, DaemonSet...) exists to manage a template of.</p>
+
+    <p>A Pod is one or more containers that share a <strong>network namespace</strong> (same IP, <code>localhost</code> between containers) and can share <strong>storage</strong> (via volumes). Containers in a Pod are always scheduled together, on the same node, and live/die together &mdash; you never split containers of one Pod across nodes.</p>
+
+    <p><strong>Lifecycle</strong> &mdash; a Pod moves through phases you'll read constantly in <code>kubectl get pods</code>: <code>Pending</code> (accepted, not yet scheduled/running), <code>Running</code> (bound to a node, at least one container running), <code>Succeeded</code> (all containers exited 0 &mdash; normal for a one-shot Job pod, not a server), <code>Failed</code> (a container exited non-zero and wasn't restarted), <code>Unknown</code> (node unreachable).</p>
+
+    <p>Within <code>Running</code>, each container also has its own state &mdash; <code>Waiting</code>, <code>Running</code>, or <code>Terminated</code> &mdash; visible under <code>status.containerStatuses</code> in <code>-o yaml</code>, and the reason CKAD questions often ask you to <code>describe</code> a pod rather than trust the one-word phase.</p>
+
+    <p><strong>Multi-container pods</strong> exist because "one process per container" doesn't mean "one container per Pod." Common patterns: a <strong>sidecar</strong> runs alongside the main container for the Pod's whole life (e.g. a log shipper reading from a shared volume); an <strong>init container</strong> (deep-dived Day 9) runs to completion <em>before</em> the main containers start; an <strong>ambassador/adapter</strong> proxies or reshapes traffic between the main container and the outside world. On the exam, this shows up as "add a sidecar that does X" &mdash; you edit <code>spec.containers</code> to add a second entry, often with a shared <code>emptyDir</code> volume mounted into both.</p>
+  </section>
+
+  <section>
+    <h2>kubectl command drills</h2>
+    <p>Get something running fast, then inspect it:</p>
+    <pre><code>kubectl run mypod --image=nginx
+kubectl get pods
+kubectl get pod mypod -o wide
+kubectl describe pod mypod
+kubectl get pod mypod -o jsonpath='{.status.phase}{"\n"}'
+kubectl get pod mypod -o jsonpath='{.status.containerStatuses[0].state}{"\n"}'</code></pre>
+
+    <p>Scaffold a Pod's YAML instead of writing it from scratch:</p>
+    <pre><code>kubectl run mypod --image=nginx --dry-run=client -o yaml > pod.yaml
+kubectl run mypod --image=nginx --restart=Never --dry-run=client -o yaml
+kubectl explain pod.spec.containers --recursive | less</code></pre>
+
+    <p>Mutate an existing Pod's neighbors (Pods are mostly immutable once running &mdash; <code>edit</code>/<code>patch</code> cover the few mutable fields like labels/annotations, otherwise it's delete+recreate):</p>
+    <pre><code>kubectl edit pod mypod
+kubectl patch pod mypod -p '{"metadata":{"labels":{"tier":"frontend"}}}'
+kubectl label pod mypod tier=frontend
+kubectl annotate pod mypod owner=team-a</code></pre>
+
+    <p>Multi-container pod &mdash; add a sidecar via YAML (generate the base with <code>--dry-run=client</code>, then hand-edit to add the second container and shared volume):</p>
+    <pre><code>apiVersion: v1
+kind: Pod
+metadata:
+  name: web-with-sidecar
+  labels:
+    app: web
+spec:
+  containers:
+    - name: web
+      image: nginx
+      volumeMounts:
+        - name: logs
+          mountPath: /var/log/nginx
+    - name: log-shipper
+      image: busybox
+      command: ["sh", "-c", "tail -f /var/log/nginx/access.log"]
+      volumeMounts:
+        - name: logs
+          mountPath: /var/log/nginx
+  volumes:
+    - name: logs
+      emptyDir: {}</code></pre>
+
+    <pre><code>kubectl apply -f pod.yaml
+kubectl get pod web-with-sidecar -o jsonpath='{.spec.containers[*].name}{"\n"}'
+kubectl logs web-with-sidecar -c log-shipper
+kubectl exec -it web-with-sidecar -c web -- sh</code></pre>
+
+    <p>Clean up:</p>
+    <pre><code>kubectl delete pod mypod web-with-sidecar</code></pre>
+  </section>
+
+  <section>
+    <h2>Hands-on lab <span style="font-weight:400;color:var(--ink-soft);font-size:0.85rem;">&mdash; run on your own local minikube</span></h2>
+    <div class="lab">
+      <p><strong>Task:</strong> create a Pod named <code>multi-demo</code> with two containers sharing an <code>emptyDir</code> volume mounted at <code>/data</code> in both: container <code>writer</code> (<code>busybox</code>, appends a timestamp to <code>/data/log.txt</code> every 2s in a loop) and container <code>reader</code> (<code>busybox</code>, tails <code>/data/log.txt</code>). Apply it, then confirm the reader sees lines the writer produced.</p>
+      <pre><code>kubectl apply -f pod.yaml
+kubectl wait --for=condition=Ready pod/multi-demo --timeout=60s</code></pre>
+      <p><strong>Verification</strong> (should print at least one line containing a timestamp, proving cross-container shared storage works):</p>
+      <pre><code>kubectl logs multi-demo -c reader --tail=5
+kubectl get pod multi-demo -o jsonpath='{.status.containerStatuses[*].name}{"\n"}'</code></pre>
+    </div>
+  </section>
+
+  <section>
+    <h2>Quiz</h2>
+
+    <div class="tier">
+      <span class="tier-label">Tier 1 &middot; Recall</span>
+      <div class="card">
+        <ol>
+          <li>What two things do all containers within the same Pod always share?</li>
+          <li>List the five Pod phases and, in one phrase each, what each one means.</li>
+          <li>What's the difference between a sidecar container and an init container in terms of <em>when</em> it runs?</li>
+        </ol>
+      </div>
+    </div>
+
+    <div class="tier">
+      <span class="tier-label">Tier 2 &middot; Application</span>
+      <div class="card">
+        <ol>
+          <li>Write the exact <code>kubectl</code> command to create a Pod named <code>debug-box</code> running the <code>busybox</code> image that does <strong>not</strong> restart on completion (<code>restartPolicy: Never</code>), without writing any YAML.</li>
+          <li>Write the exact <code>kubectl</code> command to print only the <code>status.phase</code> of a Pod named <code>web</code> in the <code>staging</code> namespace.</li>
+          <li>Write the exact <code>kubectl</code> command to view the logs of just the <code>log-shipper</code> container inside a multi-container Pod named <code>web-with-sidecar</code>.</li>
+        </ol>
+      </div>
+    </div>
+
+    <div class="tier">
+      <span class="tier-label">Tier 3 &middot; Exam-sim (target: 4 minutes)</span>
+      <div class="card">
+        <ol>
+          <li>A Pod named <code>app</code> has two containers, <code>app</code> and <code>sidecar</code>, sharing an <code>emptyDir</code> volume at <code>/data</code>. <code>kubectl get pods</code> shows <code>app</code> as <code>1/2 Running</code>. Write the single command you'd run first to find out <em>which</em> container is not ready and why, then state which field in the output tells you the failing container's name.</li>
+          <li>Write a complete Pod manifest (YAML) for a Pod named <code>sidecar-demo</code> with two containers &mdash; <code>main</code> (image <code>nginx</code>) and <code>helper</code> (image <code>busybox</code>, command <code>sh -c "sleep 3600"</code>) &mdash; both mounting a shared <code>emptyDir</code> volume named <code>shared-data</code> at <code>/shared</code>. No extra fields beyond what's needed.</li>
+        </ol>
+      </div>
+    </div>
+
+    <details>
+      <summary>Answer key</summary>
+      <div class="answer-body">
+        <h4>Tier 1</h4>
+        <p>1. The Pod's network namespace (same IP address, containers reach each other via <code>localhost</code>) and, if defined, any shared volumes.</p>
+        <p>2. <code>Pending</code> &mdash; accepted but not yet scheduled/running; <code>Running</code> &mdash; bound to a node with at least one container running; <code>Succeeded</code> &mdash; all containers exited 0; <code>Failed</code> &mdash; a container exited non-zero and wasn't restarted; <code>Unknown</code> &mdash; node/kubelet unreachable, status can't be determined.</p>
+        <p>3. An init container runs to completion <em>before</em> any main container starts (sequentially if there are several). A sidecar runs <em>alongside</em> the main container(s) for the Pod's entire lifetime, starting around the same time.</p>
+
+        <h4>Tier 2</h4>
+        <p>1. <code>kubectl run debug-box --image=busybox --restart=Never -- sleep 3600</code> (any valid non-exiting command works; <code>--restart=Never</code> is the key flag).</p>
+        <p>2. <code>kubectl get pod web -n staging -o jsonpath='{.status.phase}{"\n"}'</code></p>
+        <p>3. <code>kubectl logs web-with-sidecar -c log-shipper</code></p>
+
+        <h4>Tier 3</h4>
+        <p>1. <code>kubectl describe pod app</code> &mdash; the <code>Containers:</code> section lists each container with its own <code>State</code>/<code>Ready</code>/<code>Restart Count</code>, and <code>Events:</code> at the bottom usually shows why (e.g. <code>CrashLoopBackOff</code>, readiness probe failure). The failing container's name is the heading of its block under <code>Containers:</code> (or via <code>kubectl get pod app -o jsonpath='{.status.containerStatuses[?(@.ready==false)].name}'</code>).</p>
+        <p>2.</p>
+        <pre><code>apiVersion: v1
+kind: Pod
+metadata:
+  name: sidecar-demo
+spec:
+  containers:
+    - name: main
+      image: nginx
+      volumeMounts:
+        - name: shared-data
+          mountPath: /shared
+    - name: helper
+      image: busybox
+      command: ["sh", "-c", "sleep 3600"]
+      volumeMounts:
+        - name: shared-data
+          mountPath: /shared
+  volumes:
+    - name: shared-data
+      emptyDir: {}</code></pre>
+      </div>
+    </details>
+  </section>
+
+  <footer>CKAD Daily Trainer &middot; Day 3 of 60 &middot; exam target 2026-09-13</footer>
+</div>
