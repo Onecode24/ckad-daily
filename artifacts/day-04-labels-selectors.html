@@ -1,0 +1,388 @@
+<title>CKAD Day 04: Labels, Selectors & Annotations</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root {
+    --bg: #eef1f6;
+    --surface: #ffffff;
+    --ink: #121826;
+    --ink-soft: #4b5567;
+    --accent: #2955c9;
+    --accent-soft: #dde6fb;
+    --tag: #b8752a;
+    --tag-soft: #f6e6d2;
+    --rule: #d7dce6;
+    --code-bg: #f4f6fb;
+    --code-ink: #1c2436;
+  }
+  :root[data-theme="dark"] {
+    --bg: #0d121c;
+    --surface: #161d2b;
+    --ink: #e8ecf5;
+    --ink-soft: #a8b2c4;
+    --accent: #7ea2ff;
+    --accent-soft: #1c2740;
+    --tag: #e0a552;
+    --tag-soft: #3a2c17;
+    --rule: #2a3348;
+    --code-bg: #0f1420;
+    --code-ink: #d8e0f0;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0d121c;
+      --surface: #161d2b;
+      --ink: #e8ecf5;
+      --ink-soft: #a8b2c4;
+      --accent: #7ea2ff;
+      --accent-soft: #1c2740;
+      --tag: #e0a552;
+      --tag-soft: #3a2c17;
+      --rule: #2a3348;
+      --code-bg: #0f1420;
+      --code-ink: #d8e0f0;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  html { color-scheme: light dark; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: ui-sans-serif, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1, h2, h3 {
+    font-family: ui-serif, "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+    font-weight: 600;
+    text-wrap: balance;
+    color: var(--ink);
+  }
+  .wrap { max-width: 780px; margin: 0 auto; padding: 0 1.5rem 4rem; }
+
+  header.banner {
+    background: linear-gradient(160deg, #101728 0%, #1b2740 100%);
+    color: #eef1f6;
+    padding: 3rem 1.5rem 2.4rem;
+    margin-bottom: 2.5rem;
+  }
+  :root[data-theme="light"] header.banner,
+  @media (prefers-color-scheme: light) { }
+  header.banner .inner { max-width: 780px; margin: 0 auto; }
+  .eyebrow {
+    font-family: ui-monospace, "SF Mono", "Cascadia Code", monospace;
+    font-size: 0.8rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #9fb2e0;
+    margin: 0 0 0.6rem;
+  }
+  header.banner h1 {
+    color: #fff;
+    margin: 0 0 0.5rem;
+    font-size: 2.15rem;
+    line-height: 1.15;
+  }
+  header.banner p.sub {
+    color: #c3cee6;
+    margin: 0 0 1.1rem;
+    font-size: 1rem;
+  }
+  .chips { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+  .chip {
+    font-family: ui-monospace, "SF Mono", "Cascadia Code", monospace;
+    font-size: 0.82rem;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(159,178,224,0.35);
+    color: #dbe4f7;
+    padding: 0.25rem 0.65rem;
+    border-radius: 3px;
+  }
+
+  section { margin-bottom: 2.4rem; }
+  h2 {
+    font-size: 1.5rem;
+    border-bottom: 1px solid var(--rule);
+    padding-bottom: 0.5rem;
+    margin: 0 0 1.1rem;
+  }
+  h3 {
+    font-size: 1.1rem;
+    margin: 1.6rem 0 0.6rem;
+    color: var(--ink);
+  }
+  p { margin: 0 0 1rem; color: var(--ink); }
+  .lede { color: var(--ink-soft); }
+  ul, ol { padding-left: 1.3rem; margin: 0 0 1rem; }
+  li { margin-bottom: 0.35rem; }
+  strong { color: var(--ink); }
+  code {
+    font-family: ui-monospace, "SF Mono", "Cascadia Code", monospace;
+    font-size: 0.88em;
+    background: var(--accent-soft);
+    color: var(--accent);
+    padding: 0.1em 0.35em;
+    border-radius: 3px;
+  }
+  pre {
+    background: var(--code-bg);
+    color: var(--code-ink);
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--accent);
+    border-radius: 6px;
+    padding: 1rem 1.1rem;
+    overflow-x: auto;
+    margin: 0 0 1.1rem;
+    font-family: ui-monospace, "SF Mono", "Cascadia Code", monospace;
+    font-size: 0.86rem;
+    line-height: 1.55;
+  }
+  pre code { background: none; color: inherit; padding: 0; }
+
+  .domain-tag {
+    display: inline-block;
+    font-family: ui-monospace, "SF Mono", "Cascadia Code", monospace;
+    font-size: 0.75rem;
+    color: var(--tag);
+    background: var(--tag-soft);
+    border-radius: 3px;
+    padding: 0.15rem 0.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .lab-card {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    padding: 1.3rem 1.4rem 1rem;
+  }
+  .lab-card h3 { margin-top: 0; }
+
+  .tier {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    padding: 1.3rem 1.4rem 1.4rem;
+    margin-bottom: 1.2rem;
+  }
+  .tier-head {
+    display: flex;
+    align-items: baseline;
+    gap: 0.6rem;
+    margin-bottom: 0.9rem;
+  }
+  .tier-num {
+    font-family: ui-monospace, "SF Mono", "Cascadia Code", monospace;
+    font-size: 0.78rem;
+    letter-spacing: 0.08em;
+    color: var(--accent);
+    background: var(--accent-soft);
+    padding: 0.2rem 0.55rem;
+    border-radius: 3px;
+    text-transform: uppercase;
+  }
+  .tier-head h3 { margin: 0; font-size: 1.15rem; }
+  .tier ol { margin-bottom: 0; }
+  .tier ol li { margin-bottom: 0.7rem; }
+
+  details.answers {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    padding: 1.1rem 1.4rem;
+    margin-top: 1.5rem;
+  }
+  details.answers summary {
+    cursor: pointer;
+    font-weight: 600;
+    font-family: ui-serif, Georgia, serif;
+    font-size: 1.05rem;
+    color: var(--accent);
+    padding: 0.2rem 0;
+  }
+  details.answers summary:focus-visible,
+  a:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  details.answers[open] summary { margin-bottom: 0.9rem; }
+  .answers h4 {
+    font-family: ui-monospace, monospace;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--tag);
+    margin: 1.3rem 0 0.5rem;
+  }
+  .answers h4:first-of-type { margin-top: 0; }
+
+  footer {
+    border-top: 1px solid var(--rule);
+    margin-top: 2rem;
+    padding-top: 1.2rem;
+    color: var(--ink-soft);
+    font-size: 0.85rem;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    section { animation: fadeIn 0.4s ease-out; }
+  }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+</style>
+
+<header class="banner">
+  <div class="inner">
+    <p class="eyebrow">CKAD Daily Trainer — Day 04 / 60</p>
+    <h1>Labels, Selectors &amp; Annotations</h1>
+    <p class="sub">Application Environment, Configuration &amp; Security domain (~25% of the exam) · Week 1, Foundations</p>
+    <div class="chips">
+      <span class="chip">app=web</span>
+      <span class="chip">tier=frontend</span>
+      <span class="chip">env in (prod, qa)</span>
+      <span class="chip">build=42 <em>(annotation)</em></span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+<section>
+  <span class="domain-tag">concept brief</span>
+  <p>Days 1-3 covered the cluster, the CLI, and the Pod. Today's topic is how Kubernetes <em>organizes</em> and <em>finds</em> objects: <strong>labels</strong>, <strong>selectors</strong>, and <strong>annotations</strong>.</p>
+
+  <p><strong>Labels</strong> are key/value pairs attached to <code>metadata.labels</code> on any object (Pods, Deployments, Services, Nodes...). They're identifying metadata meant to be queried — things like <code>app=frontend</code>, <code>tier=backend</code>, <code>env=production</code>, <code>version=v2</code>. Labels are how the loosely-coupled parts of Kubernetes find each other: a Service doesn't point at Pods by name, it points at a <strong>label selector</strong>, and any Pod whose labels match is included as an endpoint — even Pods created later. Same mechanism connects ReplicaSets to the Pods they own, and NetworkPolicies to the Pods they apply to.</p>
+
+  <p>A <strong>selector</strong> is a query over labels. There are two forms:</p>
+  <ul>
+    <li><strong>Equality-based:</strong> <code>app=frontend</code>, <code>tier!=cache</code> — exact match / negation.</li>
+    <li><strong>Set-based:</strong> <code>environment in (production, qa)</code>, <code>tier notin (frontend)</code>, <code>partition</code> (key exists), <code>!partition</code> (key doesn't exist). Set-based selectors are more expressive and are what Deployments/ReplicaSets use internally (<code>matchLabels</code> + <code>matchExpressions</code> in <code>spec.selector</code>).</li>
+  </ul>
+
+  <p><strong>Annotations</strong> look similar (<code>metadata.annotations</code>, also key/value) but serve a different purpose: they hold <strong>non-identifying</strong> metadata — build numbers, git commit SHAs, contact emails, tool-specific config (<code>kubectl.kubernetes.io/last-applied-configuration</code> is itself an annotation <code>kubectl apply</code> uses for 3-way merges). Kubernetes never selects/filters on annotations, and there are no size/character restrictions the way there are for label values. Rule of thumb: if something needs to be queried or matched, it's a <strong>label</strong>; if it's just descriptive data for humans or tools, it's an <strong>annotation</strong>.</p>
+
+  <p class="lede">On the exam, you'll constantly use <code>-l</code>/<code>--selector</code> to filter <code>kubectl get</code>/<code>delete</code> output, and you'll be asked to add/change labels to make a Service pick up (or drop) a Pod, or to fix a Deployment whose <code>spec.selector</code> no longer matches its Pod template's labels (a classic "broken deployment" gotcha — <code>spec.selector.matchLabels</code> is <strong>immutable</strong> after creation).</p>
+</section>
+
+<section>
+  <h2>kubectl command drills</h2>
+
+  <h3>Get Pods running with labels attached from the start</h3>
+  <pre><code>kubectl run web-1 --image=nginx --labels="app=web,tier=frontend"
+kubectl run web-2 --image=nginx --labels="app=web,tier=frontend"
+kubectl run cache-1 --image=redis --labels="app=cache,tier=backend"</code></pre>
+
+  <h3>Query with selectors (<code>-l</code> / <code>--selector</code>), both forms</h3>
+  <pre><code>kubectl get pods -l app=web
+kubectl get pods -l 'tier in (frontend,backend)'
+kubectl get pods -l 'app!=cache'
+kubectl get pods -l 'app'                       # key exists, any value
+kubectl get pods --show-labels
+kubectl get pods -l app=web -o name</code></pre>
+
+  <h3>Expose a labeled set as a Service</h3>
+  <p>The Service's <code>spec.selector</code> is what ties it to matching Pods:</p>
+  <pre><code>kubectl expose pod web-1 --port=80 --name=web-svc --selector="app=web"
+kubectl get endpoints web-svc</code></pre>
+
+  <h3>Mutate labels/annotations on a live object</h3>
+  <p><code>kubectl set</code> doesn't cover labels — use the dedicated <code>label</code>/<code>annotate</code> subcommands:</p>
+  <pre><code>kubectl label pod cache-1 tier=frontend --overwrite
+kubectl label pod cache-1 tier-                 # trailing dash removes a label
+kubectl annotate pod web-1 build="42" commit="a1b2c3d"
+kubectl annotate pod web-1 build-               # removes an annotation</code></pre>
+
+  <h3>Scale/set drills that depend on selectors matching</h3>
+  <pre><code>kubectl scale deployment web --replicas=3
+kubectl set image deployment/web nginx=nginx:1.25</code></pre>
+
+  <h3>Generate YAML scaffolding, inspect/edit/patch</h3>
+  <pre><code>kubectl run web-3 --image=nginx --labels="app=web,tier=frontend" \
+  --dry-run=client -o yaml > web-3.yaml
+kubectl explain pod.metadata.labels
+kubectl edit pod web-3
+kubectl patch pod web-3 -p '{"metadata":{"labels":{"canary":"true"}}}'
+kubectl patch pod web-3 --type=json \
+  -p='[{"op":"remove","path":"/metadata/labels/canary"}]'</code></pre>
+
+  <h3>Clean up</h3>
+  <pre><code>kubectl delete pod web-1 web-2 web-3 cache-1
+kubectl delete svc web-svc</code></pre>
+</section>
+
+<section>
+  <div class="lab-card">
+    <span class="domain-tag">hands-on lab · your own local minikube</span>
+    <h3>Task</h3>
+    <p>Create three Pods — <code>pod-a</code> and <code>pod-b</code> with label <code>app=payments</code>, and <code>pod-c</code> with label <code>app=inventory</code> (all image <code>nginx</code>). Then create a Service named <code>payments-svc</code> that selects <code>app=payments</code> and exposes port 80. Confirm the Service's Endpoints list exactly <code>pod-a</code> and <code>pod-b</code>'s IPs (not <code>pod-c</code>). Finally, relabel <code>pod-c</code> to <code>app=payments</code> and confirm the Service picks it up automatically without recreating anything.</p>
+    <pre><code>kubectl run pod-a --image=nginx --labels="app=payments"
+kubectl run pod-b --image=nginx --labels="app=payments"
+kubectl run pod-c --image=nginx --labels="app=inventory"
+kubectl expose pod pod-a --port=80 --name=payments-svc --selector="app=payments"</code></pre>
+    <h3>Verification command</h3>
+    <p>Should list 2 endpoint IPs, then 3 after the relabel:</p>
+    <pre><code>kubectl get endpoints payments-svc -o jsonpath='{.subsets[*].addresses[*].ip}{"\n"}'
+kubectl label pod pod-c app=payments --overwrite
+kubectl get endpoints payments-svc -o jsonpath='{.subsets[*].addresses[*].ip}{"\n"}'</code></pre>
+  </div>
+</section>
+
+<section>
+  <h2>Quiz</h2>
+
+  <div class="tier">
+    <div class="tier-head"><span class="tier-num">Tier 1 · Recall</span></div>
+    <ol>
+      <li>What is the key difference in purpose between a label and an annotation?</li>
+      <li>Name the two forms of label selectors and give one example of each.</li>
+      <li>Which field on a Service ties it to a set of Pods, and how does Kubernetes decide which Pods are included?</li>
+    </ol>
+  </div>
+
+  <div class="tier">
+    <div class="tier-head"><span class="tier-num">Tier 2 · Application</span></div>
+    <ol>
+      <li>Write the exact <code>kubectl</code> command to create a Pod named <code>api-1</code> with image <code>nginx</code> and labels <code>app=api</code> and <code>tier=backend</code> set at creation time (no YAML file).</li>
+      <li>Write the exact <code>kubectl</code> command to list all Pods whose <code>tier</code> label is either <code>frontend</code> or <code>backend</code>, using a set-based selector.</li>
+      <li>Write the exact <code>kubectl</code> command to remove the <code>tier</code> label from a Pod named <code>api-1</code> without touching its other labels.</li>
+    </ol>
+  </div>
+
+  <div class="tier">
+    <div class="tier-head"><span class="tier-num">Tier 3 · Exam-sim (target: 3 minutes)</span></div>
+    <ol>
+      <li>A Deployment named <code>web</code> has <code>spec.selector.matchLabels: {app: web}</code> and its Pod template has label <code>app: web</code>. Someone ran <code>kubectl label pod web-abc123 app=web-old --overwrite</code> directly on one of the running Pods. Will the Deployment's ReplicaSet still count that Pod toward its desired replica count? What will happen shortly after, and what single command would you run to see it happen?</li>
+      <li>You need to edit a Deployment's <code>spec.selector.matchLabels</code> to add a new key. You run <code>kubectl edit deployment web</code> and add <code>version: v2</code> under <code>matchLabels</code>, save, and get an error. Why does this fail, and what would you actually have to do to change which Pods a Deployment selects?</li>
+    </ol>
+  </div>
+
+  <details class="answers">
+    <summary>Answer key</summary>
+
+    <h4>Tier 1</h4>
+    <ol>
+      <li>Labels are identifying metadata meant to be <em>selected/queried on</em> (Services, ReplicaSets, NetworkPolicies match against them); annotations are non-identifying metadata for humans/tools (build info, commit SHAs, config) that Kubernetes never filters or selects by.</li>
+      <li>Equality-based (e.g. <code>app=web</code>, <code>tier!=cache</code>) and set-based (e.g. <code>environment in (production, qa)</code>, <code>tier notin (frontend)</code>, or bare <code>partition</code> for key-exists).</li>
+      <li><code>spec.selector</code> on the Service. Kubernetes includes any Pod whose <code>metadata.labels</code> match every key/value in that selector — matching is dynamic and re-evaluated continuously, so Pods created later are picked up automatically.</li>
+    </ol>
+
+    <h4>Tier 2</h4>
+    <ol>
+      <li><code>kubectl run api-1 --image=nginx --labels="app=api,tier=backend"</code></li>
+      <li><code>kubectl get pods -l 'tier in (frontend,backend)'</code></li>
+      <li><code>kubectl label pod api-1 tier-</code></li>
+    </ol>
+
+    <h4>Tier 3</h4>
+    <ol>
+      <li>No — the ReplicaSet's <code>spec.selector.matchLabels</code> still requires <code>app=web</code>, and this Pod's label no longer matches, so the ReplicaSet no longer counts it as one of "its" Pods even though it still exists and is running. Because the ReplicaSet is now short one matching Pod versus its desired replica count, it will create a brand-new replacement Pod with the correct <code>app=web</code> label shortly after (the orphaned Pod with <code>app=web-old</code> is left running, unmanaged, until manually deleted). Command to watch it happen: <code>kubectl get pods -l app=web -w</code> (or <code>kubectl get pods --show-labels -w</code>) to see the new Pod appear while the relabeled one stays orphaned.</li>
+      <li><code>spec.selector.matchLabels</code> (and <code>matchExpressions</code>) on a Deployment is <strong>immutable</strong> after creation — the API server rejects updates to it, so <code>kubectl edit</code> will save-and-error (or refuse) on that field. To actually change which Pods a Deployment selects, you must delete and recreate the Deployment with the new selector (optionally with <code>--cascade=orphan</code> to keep existing Pods/ReplicaSet alive during the swap), since there's no in-place mutation path for that field.</li>
+    </ol>
+  </details>
+</section>
+
+<footer>
+  CKAD Daily Trainer — self-graded, hands-on lab runs on your own local minikube (never in this automation). Merge this PR to unlock Day 5.
+</footer>
+
+</div>
