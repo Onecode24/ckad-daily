@@ -1,0 +1,460 @@
+<title>CKAD Day 05: ReplicaSets & the Reconciliation Loop</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root {
+    --bg: #eef1f6;
+    --surface: #ffffff;
+    --ink: #121826;
+    --ink-soft: #4b5567;
+    --accent: #2955c9;
+    --accent-soft: #dde6fb;
+    --tag: #b8752a;
+    --tag-soft: #f6e6d2;
+    --rule: #d7dce6;
+    --code-bg: #f4f6fb;
+    --code-ink: #1c2436;
+  }
+  :root[data-theme="dark"] {
+    --bg: #0d121c;
+    --surface: #161d2b;
+    --ink: #e8ecf5;
+    --ink-soft: #a8b2c4;
+    --accent: #7ea2ff;
+    --accent-soft: #1c2740;
+    --tag: #e0a552;
+    --tag-soft: #3a2c17;
+    --rule: #2a3348;
+    --code-bg: #0f1420;
+    --code-ink: #d8e0f0;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0d121c;
+      --surface: #161d2b;
+      --ink: #e8ecf5;
+      --ink-soft: #a8b2c4;
+      --accent: #7ea2ff;
+      --accent-soft: #1c2740;
+      --tag: #e0a552;
+      --tag-soft: #3a2c17;
+      --rule: #2a3348;
+      --code-bg: #0f1420;
+      --code-ink: #d8e0f0;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  html { color-scheme: light dark; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: ui-sans-serif, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1, h2, h3 {
+    font-family: ui-serif, "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+    font-weight: 600;
+    text-wrap: balance;
+    color: var(--ink);
+  }
+  .wrap { max-width: 780px; margin: 0 auto; padding: 0 1.5rem 4rem; }
+
+  header.banner {
+    background: linear-gradient(160deg, #101728 0%, #1b2740 100%);
+    color: #eef1f6;
+    padding: 3rem 1.5rem 2.4rem;
+    margin-bottom: 2.5rem;
+  }
+  header.banner .inner { max-width: 780px; margin: 0 auto; }
+  .eyebrow {
+    font-family: ui-monospace, "SF Mono", "Cascadia Code", monospace;
+    font-size: 0.8rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #9fb2e0;
+    margin: 0 0 0.6rem;
+  }
+  header.banner h1 {
+    color: #fff;
+    margin: 0 0 0.5rem;
+    font-size: 2.15rem;
+    line-height: 1.15;
+  }
+  header.banner p.sub {
+    color: #c3cee6;
+    margin: 0 0 1.1rem;
+    font-size: 1rem;
+  }
+  .chips { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+  .chip {
+    font-family: ui-monospace, "SF Mono", "Cascadia Code", monospace;
+    font-size: 0.82rem;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(159,178,224,0.35);
+    color: #dbe4f7;
+    padding: 0.25rem 0.65rem;
+    border-radius: 3px;
+  }
+
+  section { margin-bottom: 2.4rem; }
+  h2 {
+    font-size: 1.5rem;
+    border-bottom: 1px solid var(--rule);
+    padding-bottom: 0.5rem;
+    margin: 0 0 1.1rem;
+  }
+  h3 {
+    font-size: 1.1rem;
+    margin: 1.6rem 0 0.6rem;
+    color: var(--ink);
+  }
+  p { margin: 0 0 1rem; color: var(--ink); }
+  .lede { color: var(--ink-soft); }
+  ul, ol { padding-left: 1.3rem; margin: 0 0 1rem; }
+  li { margin-bottom: 0.35rem; }
+  strong { color: var(--ink); }
+  code {
+    font-family: ui-monospace, "SF Mono", "Cascadia Code", monospace;
+    font-size: 0.88em;
+    background: var(--accent-soft);
+    color: var(--accent);
+    padding: 0.1em 0.35em;
+    border-radius: 3px;
+  }
+  pre {
+    background: var(--code-bg);
+    color: var(--code-ink);
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--accent);
+    border-radius: 6px;
+    padding: 1rem 1.1rem;
+    overflow-x: auto;
+    margin: 0 0 1.1rem;
+    font-family: ui-monospace, "SF Mono", "Cascadia Code", monospace;
+    font-size: 0.86rem;
+    line-height: 1.55;
+  }
+  pre code { background: none; color: inherit; padding: 0; }
+
+  .domain-tag {
+    display: inline-block;
+    font-family: ui-monospace, "SF Mono", "Cascadia Code", monospace;
+    font-size: 0.75rem;
+    color: var(--tag);
+    background: var(--tag-soft);
+    border-radius: 3px;
+    padding: 0.15rem 0.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .loop-diagram {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    padding: 1rem 1.2rem;
+    margin-bottom: 1.2rem;
+    font-family: ui-monospace, "SF Mono", "Cascadia Code", monospace;
+    font-size: 0.82rem;
+  }
+  .loop-diagram .step {
+    color: var(--accent);
+    background: var(--accent-soft);
+    padding: 0.35rem 0.7rem;
+    border-radius: 4px;
+    white-space: nowrap;
+  }
+  .loop-diagram .arrow { color: var(--ink-soft); }
+
+  .lab-card {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    padding: 1.3rem 1.4rem 1rem;
+  }
+  .lab-card h3 { margin-top: 0; }
+
+  .tier {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    padding: 1.3rem 1.4rem 1.4rem;
+    margin-bottom: 1.2rem;
+  }
+  .tier-head {
+    display: flex;
+    align-items: baseline;
+    gap: 0.6rem;
+    margin-bottom: 0.9rem;
+  }
+  .tier-num {
+    font-family: ui-monospace, "SF Mono", "Cascadia Code", monospace;
+    font-size: 0.78rem;
+    letter-spacing: 0.08em;
+    color: var(--accent);
+    background: var(--accent-soft);
+    padding: 0.2rem 0.55rem;
+    border-radius: 3px;
+    text-transform: uppercase;
+  }
+  .tier-head h3 { margin: 0; font-size: 1.15rem; }
+  .tier ol { margin-bottom: 0; }
+  .tier ol li { margin-bottom: 0.7rem; }
+
+  details.answers {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    padding: 1.1rem 1.4rem;
+    margin-top: 1.5rem;
+  }
+  details.answers summary {
+    cursor: pointer;
+    font-weight: 600;
+    font-family: ui-serif, Georgia, serif;
+    font-size: 1.05rem;
+    color: var(--accent);
+    padding: 0.2rem 0;
+  }
+  details.answers summary:focus-visible,
+  a:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  details.answers[open] summary { margin-bottom: 0.9rem; }
+  .answers h4 {
+    font-family: ui-monospace, monospace;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--tag);
+    margin: 1.3rem 0 0.5rem;
+  }
+  .answers h4:first-of-type { margin-top: 0; }
+
+  footer {
+    border-top: 1px solid var(--rule);
+    margin-top: 2rem;
+    padding-top: 1.2rem;
+    color: var(--ink-soft);
+    font-size: 0.85rem;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    section { animation: fadeIn 0.4s ease-out; }
+  }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+</style>
+
+<header class="banner">
+  <div class="inner">
+    <p class="eyebrow">CKAD Daily Trainer — Day 05 / 60</p>
+    <h1>ReplicaSets &amp; the Reconciliation Loop</h1>
+    <p class="sub">Application Deployment domain (~20% of the exam) · Week 1, Foundations</p>
+    <div class="chips">
+      <span class="chip">replicas: 3</span>
+      <span class="chip">matchLabels: {app: web}</span>
+      <span class="chip">observe → diff → act</span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+<section>
+  <span class="domain-tag">concept brief</span>
+  <p>Day 4 covered labels and selectors — the matching mechanism Kubernetes uses to connect loosely-coupled objects. Today's topic, <strong>ReplicaSets</strong>, is the first object you'll meet that actually <em>uses</em> that mechanism to keep something running: it's Kubernetes' answer to "make sure N copies of this Pod always exist."</p>
+
+  <p>A ReplicaSet's spec has three parts: <code>replicas</code> (the desired count), <code>selector</code> (a set-based label selector — <code>matchLabels</code>/<code>matchExpressions</code> — identifying which Pods it owns), and <code>template</code> (the Pod spec used to create new Pods when needed). The ReplicaSet controller runs a continuous <strong>reconciliation loop</strong>:</p>
+
+  <div class="loop-diagram">
+    <span class="step">observe current state</span>
+    <span class="arrow">&rarr;</span>
+    <span class="step">diff vs. desired</span>
+    <span class="arrow">&rarr;</span>
+    <span class="step">create/delete Pods</span>
+    <span class="arrow">&rarr;</span>
+    <span class="step">repeat</span>
+  </div>
+
+  <p>Watch the current state (how many Pods exist that match the selector), compare it to desired state (<code>replicas</code>), and take the smallest action to close the gap — create Pods if short, delete Pods if over. This observe-diff-act loop is the core pattern behind <em>every</em> Kubernetes controller (Deployments, Jobs, DaemonSets all work the same way at a higher level), so understanding it here pays off for the rest of the syllabus.</p>
+
+  <p>A subtlety that trips people up (and shows up on the exam): a ReplicaSet doesn't "contain" its Pods in any structural sense — it <em>counts</em> Pods matching its selector, the same dynamic label-matching from Day 4. If you manually create a Pod with matching labels, the ReplicaSet adopts it and counts it toward <code>replicas</code> (possibly deleting one of its own to compensate if you're now over). If you relabel a Pod away from the selector, the ReplicaSet treats it as gone and creates a replacement — the orphaned Pod keeps running, just unmanaged.</p>
+
+  <p class="lede">In practice you will almost never create a bare ReplicaSet directly — you create a <strong>Deployment</strong>, which manages ReplicaSets for you (one per rollout, enabling rolling updates/rollback, coming in Week 4). But CKAD expects you to know what's underneath a Deployment, to read/troubleshoot <code>kubectl get rs</code> output, and to know why deleting a Pod a ReplicaSet owns doesn't actually reduce your replica count.</p>
+</section>
+
+<section>
+  <h2>kubectl command drills</h2>
+
+  <p>There's no <code>kubectl run --replicas</code> for ReplicaSets directly — imperative creation isn't supported for this object, so the fastest exam-legal path is <code>--dry-run=client -o yaml</code> scaffolding (or generating it from a Deployment and stripping it down).</p>
+
+  <h3>Generate the YAML from a Deployment</h3>
+  <pre><code>kubectl create deployment web --image=nginx --replicas=3 \
+  --dry-run=client -o yaml > web-deploy.yaml</code></pre>
+
+  <h3>Or hand-write a minimal ReplicaSet directly</h3>
+  <p>There's no imperative generator for <code>kind: ReplicaSet</code>, so this is the one object type where you'll type YAML from memory:</p>
+  <pre><code>apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+  name: web-rs
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: web
+  template:
+    metadata:
+      labels:
+        app: web
+    spec:
+      containers:
+        - name: nginx
+          image: nginx</code></pre>
+
+  <h3>Apply and inspect</h3>
+  <pre><code>kubectl apply -f web-rs.yaml
+kubectl get rs
+kubectl get rs web-rs -o wide
+kubectl describe rs web-rs
+kubectl get pods -l app=web --show-labels</code></pre>
+
+  <h3>Scale (imperative, same verb as Deployments/Services)</h3>
+  <pre><code>kubectl scale rs web-rs --replicas=5
+kubectl scale rs web-rs --replicas=2
+kubectl get rs web-rs -o jsonpath='{.status.replicas}/{.spec.replicas}{"\n"}'</code></pre>
+
+  <h3>Mutate the Pod template</h3>
+  <p>Editing <code>spec.template</code> on a live ReplicaSet does <strong>not</strong> roll out to existing Pods — only new Pods created afterward get it, since a bare ReplicaSet has no rollout mechanism, unlike a Deployment:</p>
+  <pre><code>kubectl set image rs/web-rs nginx=nginx:1.25
+kubectl edit rs web-rs
+kubectl patch rs web-rs -p '{"spec":{"replicas":4}}'</code></pre>
+
+  <h3>Prove the reconciliation loop live</h3>
+  <p>Delete a managed Pod and watch it get replaced, then orphan one by relabeling it:</p>
+  <pre><code>kubectl get pods -l app=web -w &amp;
+kubectl delete pod $(kubectl get pods -l app=web -o jsonpath='{.items[0].metadata.name}')
+# a replacement Pod appears within seconds — Ctrl+C the watch
+kubectl label pod &lt;one-remaining-pod&gt; app=web-orphan --overwrite
+# ReplicaSet creates a new Pod to replace the one it lost; the relabeled
+# Pod keeps running but is no longer counted</code></pre>
+
+  <h3>Clean up</h3>
+  <pre><code>kubectl delete rs web-rs</code></pre>
+</section>
+
+<section>
+  <div class="lab-card">
+    <span class="domain-tag">hands-on lab · your own local minikube</span>
+    <h3>Task</h3>
+    <p>Create a ReplicaSet named <code>payments-rs</code> with <code>replicas: 3</code>, selector <code>app=payments</code>, running <code>nginx</code>. Confirm 3 Pods are running. Delete one Pod directly and confirm the ReplicaSet replaces it (still 3 Pods, different Pod name set). Then create a <strong>fourth</strong>, unmanaged Pod by hand with a <strong>non-matching</strong> label (<code>app=payments-extra</code>) and confirm the ReplicaSet ignores it (still shows <code>replicas: 3</code>, desired count unaffected). Finally, relabel that fourth Pod to <code>app=payments</code> and confirm the ReplicaSet deletes one Pod to bring the count back down to 3 (it now owns 4 matching Pods but only wants 3).</p>
+    <pre><code>cat &lt;&lt;'EOF' &gt; payments-rs.yaml
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+  name: payments-rs
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: payments
+  template:
+    metadata:
+      labels:
+        app: payments
+    spec:
+      containers:
+        - name: nginx
+          image: nginx
+EOF
+kubectl apply -f payments-rs.yaml
+kubectl run payments-extra --image=nginx --labels="app=payments-extra"</code></pre>
+    <h3>Verification command</h3>
+    <p>Run before and after each step to observe the reconciliation loop in action:</p>
+    <pre><code>kubectl get rs payments-rs -o jsonpath='{.spec.replicas}/{.status.replicas}{"\n"}'
+kubectl get pods -l app=payments -o jsonpath='{.items[*].metadata.name}{"\n"}'</code></pre>
+  </div>
+</section>
+
+<section>
+  <h2>Quiz</h2>
+
+  <div class="tier">
+    <div class="tier-head"><span class="tier-num">Tier 1 · Recall</span></div>
+    <ol>
+      <li>What three fields make up a ReplicaSet's <code>spec</code>, and what does each one control?</li>
+      <li>Describe the reconciliation loop in one sentence: what does the controller observe, compare, and do?</li>
+      <li>Why does a bare ReplicaSet ignore updates you make to <code>spec.template</code> for Pods that already exist?</li>
+    </ol>
+  </div>
+
+  <div class="tier">
+    <div class="tier-head"><span class="tier-num">Tier 2 · Application</span></div>
+    <ol>
+      <li>Write the exact <code>kubectl</code> command to scale a ReplicaSet named <code>web-rs</code> to 5 replicas.</li>
+      <li>Write the exact <code>kubectl</code> command (no YAML file) to check how many Pods <code>web-rs</code> currently desires versus how many currently exist, using <code>jsonpath</code>.</li>
+      <li>Write a minimal ReplicaSet YAML (<code>kind: ReplicaSet</code>) named <code>cache-rs</code> with 2 replicas, selector <code>app=cache</code>, running image <code>redis</code>.</li>
+    </ol>
+  </div>
+
+  <div class="tier">
+    <div class="tier-head"><span class="tier-num">Tier 3 · Exam-sim (target: 4 minutes)</span></div>
+    <ol>
+      <li>A ReplicaSet <code>web-rs</code> has <code>replicas: 3</code> and selector <code>matchLabels: {app: web}</code>. You run <code>kubectl get pods -l app=web</code> and see exactly 3 Pods. You then manually create a fourth Pod named <code>web-manual</code> with label <code>app=web</code> (same selector match) directly via <code>kubectl run</code>. What happens within seconds, and which Pod is most likely to be deleted — the pre-existing one or <code>web-manual</code>? Why does the order matter here from a troubleshooting perspective?</li>
+      <li>You inherited a ReplicaSet where <code>kubectl get rs web-rs</code> shows <code>DESIRED: 3</code> and <code>CURRENT: 3</code>, but <code>kubectl get pods -l app=web</code> shows only 2 Pods, both <code>Running</code>. What field/mismatch would explain this gap, and what single command would you run first to diagnose it?</li>
+    </ol>
+  </div>
+
+  <details class="answers">
+    <summary>Answer key</summary>
+
+    <h4>Tier 1</h4>
+    <ol>
+      <li><code>replicas</code> (desired Pod count), <code>selector</code> (set-based label selector — <code>matchLabels</code>/<code>matchExpressions</code> — identifying which Pods this ReplicaSet counts as its own), and <code>template</code> (the Pod spec used to create new Pods when the controller needs more).</li>
+      <li>It continuously watches how many existing Pods match its <code>selector</code>, compares that count to <code>spec.replicas</code>, and creates or deletes the minimum number of Pods needed to close the gap.</li>
+      <li>Because a bare ReplicaSet has no rollout/update mechanism — it only acts when the <em>count</em> of matching Pods differs from <code>replicas</code>. Editing <code>spec.template</code> only affects Pods created <em>after</em> the edit (e.g. to replace a deleted one); it never touches Pods that already exist and still count toward the desired total. (Rolling updates to existing Pods require a Deployment, covered in Week 4.)</li>
+    </ol>
+
+    <h4>Tier 2</h4>
+    <ol>
+      <li><code>kubectl scale rs web-rs --replicas=5</code></li>
+      <li><code>kubectl get rs web-rs -o jsonpath='{.spec.replicas}/{.status.replicas}{"\n"}'</code></li>
+      <li><pre><code>apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+  name: cache-rs
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: cache
+  template:
+    metadata:
+      labels:
+        app: cache
+    spec:
+      containers:
+        - name: redis
+          image: redis</code></pre></li>
+    </ol>
+
+    <h4>Tier 3</h4>
+    <ol>
+      <li>The ReplicaSet now counts 4 matching Pods against a desired count of 3, so it deletes exactly one to bring the count back down — there's no contractual guarantee of which one (ReplicaSets don't prefer "manually created" vs. "controller created" Pods; deletion order is effectively unspecified/implementation-defined, though in practice newer/not-yet-ready Pods are often preferred for deletion). The order matters for troubleshooting because it means <code>web-manual</code> could survive while one of the "original" three gets deleted instead — so you can't assume the Pod you just created is safe, and you can't assume the ReplicaSet is doing anything wrong just because a Pod you expected to keep is gone; check <code>kubectl describe rs web-rs</code> (Events section) to see which Pod was actually deleted and why.</li>
+      <li>This points to a <code>selector</code>/label mismatch or a stuck/terminating Pod that the count hasn't caught up on yet — most commonly, <code>CURRENT: 3</code> reflects the ReplicaSet's last known count from its own status, but one of the "counted" Pods may be <code>Terminating</code> (not shown as Running) or a third Pod exists but doesn't match the label selector shown in <code>get pods -l app=web</code> (e.g. it has an extra required label from <code>matchExpressions</code> that the simple <code>-l app=web</code> filter doesn't reflect). First diagnostic command: <code>kubectl describe rs web-rs</code> — its Events section shows recent create/delete actions and its full selector, letting you compare against <code>kubectl get pods --show-labels</code>.</li>
+    </ol>
+  </details>
+</section>
+
+<footer>
+  CKAD Daily Trainer — self-graded, hands-on lab runs on your own local minikube (never in this automation). Merge this PR to unlock Day 6.
+</footer>
+
+</div>
